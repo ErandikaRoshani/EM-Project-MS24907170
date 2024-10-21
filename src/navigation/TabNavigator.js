@@ -4,6 +4,7 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import ChallengeScreen from '../screens/ChallengeScreen';
 import LeaderboardScreen from '../screens/LeaderboardScreen';
 import ChallengeJourney from '../screens/ChallengeJourney';
+import UserProfile from "../screens/UserProfile";
 
 const Tab = createBottomTabNavigator();
 
@@ -21,7 +22,7 @@ const TabNavigator = () => {
         component={ChallengeScreen}
         options={{
           tabBarIcon: ({ color, size }) => {
-            return <Icon name="home" size={size} color={color} />;
+            return <Icon name="walk" size={size} color={color} />;
           },
         }}
       />
@@ -30,7 +31,7 @@ const TabNavigator = () => {
         component={LeaderboardScreen}
         options={{
           tabBarIcon: ({ color, size }) => {
-            return <Icon name="cart" size={size} color={color} />;
+            return <Icon name="account-group" size={size} color={color} />;
           },
         }}
       />
@@ -39,7 +40,16 @@ const TabNavigator = () => {
         component={ChallengeJourney}
         options={{
           tabBarIcon: ({ color, size }) => {
-            return <Icon name="cog" size={size} color={color} />;
+            return <Icon name="map-marker-radius" size={size} color={color} />;
+          },
+        }}
+      />
+      <Tab.Screen
+        name="UserProfile"
+        component={UserProfile}
+        options={{
+          tabBarIcon: ({ color, size }) => {
+            return <Icon name="account" size={size} color={color} />;
           },
         }}
       />

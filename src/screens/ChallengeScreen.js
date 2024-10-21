@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, Button, TextInput, StyleSheet, ScrollView, Alert, PermissionsAndroid } from 'react-native';
+import { View, Text, Button, TextInput, StyleSheet, ScrollView, Alert, PermissionsAndroid, TouchableOpacity } from 'react-native';
 import Geolocation from 'react-native-geolocation-service';
 import { ProgressContext } from '../components/ProgressContext'; // Import the ProgressContext
+import ProgressBar from 'react-native-progress/Bar'; // Progress bar for visual progress indication
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons'; // For adding icons
 
 const ChallengeScreen = () => {
   const { level, setLevel } = useContext(ProgressContext); // Access level and setLevel from context
@@ -110,26 +112,33 @@ const ChallengeScreen = () => {
   const handleCompleteChallenge = () => {
     const currentChallengeIndex = level - 1; // Use the level from context
     const currentChallenge = challenges[currentChallengeIndex];
-
+  
     // Check if the current challenge is completed
     if (currentChallenge.totalSteps >= currentChallenge.targetSteps) {
       setGems(gems + currentChallenge.rewardGems);
-
+  
       // Update completed status and steps for the current challenge
       setChallenges(prevChallenges => {
         const updatedChallenges = [...prevChallenges];
         updatedChallenges[currentChallengeIndex].completed = true; // Mark as completed
         updatedChallenges[currentChallengeIndex].completedSteps = currentChallenge.totalSteps; // Save completed steps
-
+  
         // Unlock the next challenge if it exists
         if (level < challenges.length) {
           updatedChallenges[level].isUnlocked = true; // Unlock the next challenge
         }
         return updatedChallenges;
       });
-
-      // Move to the next challenge
-      setLevel(prevLevel => Math.min(prevLevel + 1, challenges.length)); // Ensure we do not exceed the total number of challenges
+  
+      // Move to the next challenge, but prevent going beyond level 5
+      if (level < challenges.length) {
+        setLevel(prevLevel => prevLevel + 1); // Move to the next challenge
+      } else {
+        setLevel(level+1);
+        Alert.alert('Congratulations!', 'You have completed all challenges!'); // Alert for completion
+        // Optionally reset level or navigate to a different screen
+        // setLevel(1); // Uncomment to reset to level 1 if needed
+      }
     } else {
       Alert.alert('Not enough steps to complete the challenge!');
     }
@@ -143,44 +152,68 @@ const ChallengeScreen = () => {
         <Text style={styles.levelText}>Level {challenge.level}</Text>
         {challenge.isUnlocked ? (
           <>
-            <Text style={styles.targetText}>Target Steps: {challenge.targetSteps}</Text>
-            <Text style={styles.stepsText}>Total Steps: {challenge.totalSteps}</Text>
-            <Text style={styles.stepsText}>GPS Steps: {challenge.gpsSteps}</Text>
-            <Text style={styles.stepsText}>Manual Steps: {challenge.manualSteps}</Text>
-            <Text style={styles.rewardText}>Reward: {challenge.rewardGems} gems</Text>
-            <Text style={styles.completedText}>Completed Steps: {challenge.completedSteps}</Text>
+            <Text style={styles.targetText}>Target: {challenge.targetSteps} steps</Text>
+            <View style={styles.progressContainer}>
+              <ProgressBar 
+                progress={challenge.totalSteps / challenge.targetSteps} 
+                width={null} // Full width 
+                color="#28a745"
+                height={12}
+                borderRadius={8}
+                unfilledColor="#e0e0e0"
+              />
+            </View>
+            <View style={styles.stepsInfo}>
+              <Icon name="run" size={20} color="#007BFF" />
+              <Text style={styles.stepsText}>Total Steps: {challenge.totalSteps}</Text>
+            </View>
+            <View style={styles.stepsInfo}>
+              <Icon name="map-marker" size={20} color="#007BFF" />
+              <Text style={styles.stepsText}>GPS Steps: {challenge.gpsSteps}</Text>
+            </View>
+            <View style={styles.stepsInfo}>
+              <Icon name="pencil" size={20} color="#007BFF" />
+              <Text style={styles.stepsText}>Manual Steps: {challenge.manualSteps}</Text>
+            </View>
+            <Text style={styles.rewardText}>
+              <Icon name="diamond" size={20} color="#FFA500" /> Reward: {challenge.rewardGems} gems
+            </Text>
 
-            {/* Disable completed challenges and show "Completed" label */}
             {challenge.completed ? (
               <Text style={styles.completedText}>Completed</Text>
             ) : (
-              <>
-                {/* Show input and button only for the current challenge */}
-                {isCurrentChallenge && (
-                  <>
-                    <TextInput
-                      placeholder="Add Manual Steps"
-                      keyboardType="numeric"
-                      onChangeText={(value) => {
-                        setChallenges(prevChallenges => {
-                          const updatedChallenges = [...prevChallenges];
-                          if (!updatedChallenges[level - 1].completed) { // Update only if the challenge is not completed
-                            updatedChallenges[level - 1].manualSteps = Number(value); // Update manual steps for the current challenge
-                            updatedChallenges[level - 1].totalSteps = updatedChallenges[level - 1].gpsSteps + updatedChallenges[level - 1].manualSteps; // Update total steps
-                          }
-                          return updatedChallenges;
-                        });
-                      }}
-                      style={styles.input}
-                    />
-                    <Button title="Complete Challenge" onPress={handleCompleteChallenge} />
-                  </>
-                )}
-              </>
+              isCurrentChallenge && (
+                <>
+                  <TextInput
+                    placeholder="Add Manual Steps"
+                    keyboardType="numeric"
+                    onChangeText={(value) => {
+                      setChallenges(prevChallenges => {
+                        const updatedChallenges = [...prevChallenges];
+                        if (!updatedChallenges[level - 1].completed) { // Update only if the challenge is not completed
+                          updatedChallenges[level - 1].manualSteps = Number(value); // Update manual steps for the current challenge
+                          updatedChallenges[level - 1].totalSteps = updatedChallenges[level - 1].gpsSteps + updatedChallenges[level - 1].manualSteps; // Update total steps
+                        }
+                        return updatedChallenges;
+                      });
+                    }}
+                    style={styles.input}
+                  />
+                  <TouchableOpacity style={styles.completeButton} onPress={handleCompleteChallenge}>
+                    <Text style={styles.completeButtonText}>Complete Challenge</Text>
+                  </TouchableOpacity>
+                </>
+              )
             )}
           </>
         ) : (
-          <Text style={styles.lockedText}>Challenge Locked</Text>
+          <View style={styles.lockedContainer}>
+            <View style={styles.lockedChallenge}>
+              <Icon name="lock" size={30} color="#d9534f" />
+              <Text style={styles.lockedText}> Locked</Text>
+            </View>
+            <Text style={styles.lockedDescription}>Unlock by completing the previous challenge.</Text>
+          </View>
         )}
       </View>
     );
@@ -188,9 +221,11 @@ const ChallengeScreen = () => {
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.title}>Step Challenges</Text>
+      <Text style={styles.header}>Challenge Screen</Text>
       {challenges.map(renderChallenge)}
-      <Text style={styles.gemsText}>Total Gems: {gems}</Text>
+      <Text style={styles.gemsText}>
+        <Icon name="diamond" size={20} color="#FFA500" /> Gems: {gems}
+      </Text>
     </ScrollView>
   );
 };
@@ -199,10 +234,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#f8f9fa',
   },
-  title: {
-    fontSize: 28,
+  header: {
+    fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 20,
     textAlign: 'center',
@@ -211,59 +246,96 @@ const styles = StyleSheet.create({
   challengeContainer: {
     marginBottom: 20,
     padding: 15,
-    borderColor: '#ccc',
-    borderWidth: 1,
     borderRadius: 10,
     backgroundColor: '#fff',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowRadius: 4,
     elevation: 2,
   },
   levelText: {
     fontSize: 20,
-    fontWeight: '600',
-    marginBottom: 10,
-    color: '#007BFF',
+    fontWeight: 'bold',
+    color: '#333',
   },
   targetText: {
     fontSize: 16,
+    marginVertical: 5,
     color: '#555',
   },
+  progressContainer: {
+    marginVertical: 10,
+  },
+  stepsInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 5,
+  },
   stepsText: {
+    marginLeft: 5,
     fontSize: 16,
     color: '#333',
   },
   rewardText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#FFA500',
+    color: '#28a745',
+    marginVertical: 5,
   },
   completedText: {
     fontSize: 16,
-    fontStyle: 'italic',
-    color: '#28a745', // Color for completed steps
-  },
-  lockedText: {
-    fontSize: 16,
-    color: '#d9534f',
-    fontStyle: 'italic',
+    color: '#28a745',
+    marginVertical: 10,
   },
   input: {
     borderWidth: 1,
+    borderColor: '#007BFF',
+    borderRadius: 5,
     padding: 10,
     marginVertical: 10,
+    color: '#333',
+  },
+  completeButton: {
+    backgroundColor: '#007BFF',
     borderRadius: 5,
-    borderColor: '#ccc',
-    backgroundColor: '#f0f0f0',
+    padding: 10,
+    alignItems: 'center',
+  },
+  completeButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  lockedContainer: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    marginVertical: 10,
+    padding: 10,
+    borderRadius: 10,
+    backgroundColor: '#e9ecef',
+  },
+  lockedChallenge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  lockedText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#d9534f',
+    marginLeft: 5,
+  },
+  lockedDescription: {
+    fontSize: 14,
+    color: '#6c757d',
+    textAlign: 'center',
+    marginTop: 5,
   },
   gemsText: {
     fontSize: 18,
     fontWeight: 'bold',
-    textAlign: 'center',
-    marginTop: 20,
     color: '#333',
+    marginBottom: 50,
+    textAlign: 'center',
   },
 });
 

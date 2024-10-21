@@ -7,6 +7,14 @@ apply plugin: 'com.google.gms.google-services'
  * This is the configuration block to customize your React Native Android app.
  * By default you don't need to apply any configuration, just uncomment the lines you need.
  */
+
+// Add vector icons configuration here
+project.ext.vectoricons = [
+    iconFont: "react-native-vector-icons"
+]
+
+apply from: "../../node_modules/react-native-vector-icons/fonts.gradle"
+
 react {
     /* Folders */
     //   The root of your project, i.e. where "package.json" lives. Default is '../..'
@@ -71,7 +79,7 @@ def enableProguardInReleaseBuilds = false
  * give correct results when using with locales other than en-US. Note that
  * this variant is about 6MiB larger per architecture than default.
  */
-def jscFlavor = 'org.webkit:android-jsc:+'
+def jscFlavor = 'org.webkit:android-jsc:+' 
 
 android {
     ndkVersion rootProject.ext.ndkVersion
