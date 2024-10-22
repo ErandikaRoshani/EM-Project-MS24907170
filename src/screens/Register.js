@@ -1,48 +1,74 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, Alert, StyleSheet, Pressable } from 'react-native';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
+import { auth, db } from '../../firebaseConfig';
 
-const RegisterScreen = () => {
+const RegisterScreen = ({ navigation }) => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [contactNo, setContactNo] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleRegister = () => {
-    // Validation and logic for registration (e.g., Firebase registration)
+  const handleRegister = async () => {
     if (!username || !email || !contactNo || !password) {
       Alert.alert('Error', 'All fields are required!');
       return;
     }
-    // Perform the registration logic here (like Firebase authentication)
-    Alert.alert('Success', 'User registered successfully!');
+
+    try {
+      // Register the user with Firebase Authentication
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Store user details in Firestore
+      await setDoc(doc(db, 'users', user.uid), {
+        userId: user.uid,
+        username: username,
+        email: email,
+        contactNo: contactNo,
+        gems: 0, // Initialize gem balance to 0
+      });
+
+      Alert.alert('Success', 'User registered successfully!');
+      navigation.navigate('Login')
+    } catch (error) {
+      console.error("Registration error:", error);
+      Alert.alert('Error', error.message);
+    }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Sign Up</Text>
+      <Text style={styles.title}>Create Account</Text>
+
+      <Text style={styles.subtitle}>Sign up to get started</Text>
 
       <TextInput
         style={styles.input}
         placeholder="Username"
         value={username}
         onChangeText={setUsername}
-      />
-      
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
+        placeholderTextColor="#888"
       />
 
       <TextInput
         style={styles.input}
-        placeholder="Contact No."
+        placeholder="Email Address"
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        placeholderTextColor="#888"
+      />
+
+      <TextInput
+        style={styles.input}
+        placeholder="Contact Number"
         value={contactNo}
         onChangeText={setContactNo}
         keyboardType="phone-pad"
+        placeholderTextColor="#888"
       />
 
       <TextInput
@@ -51,9 +77,12 @@ const RegisterScreen = () => {
         value={password}
         onChangeText={setPassword}
         secureTextEntry
+        placeholderTextColor="#888"
       />
 
-      <Button title="Register" onPress={handleRegister} />
+      <Pressable style={styles.registerButton} onPress={handleRegister}>
+        <Text style={styles.registerButtonText}>Register</Text>
+      </Pressable>
     </View>
   );
 };
@@ -63,21 +92,50 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: '#f7f7f7',
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 20,
     textAlign: 'center',
+    color: '#333',
+    marginBottom: 10,
+  },
+  subtitle: {
+    fontSize: 16,
+    textAlign: 'center',
+    color: '#666',
+    marginBottom: 30,
   },
   input: {
-    height: 40,
-    borderColor: 'gray',
-    borderWidth: 1,
+    height: 50,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    paddingHorizontal: 15,
     marginBottom: 20,
-    paddingHorizontal: 10,
-    borderRadius: 5,
+    fontSize: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  registerButton: {
+    height: 50,
+    backgroundColor: '#4a90e2',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  registerButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
   },
 });
 

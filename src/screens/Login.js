@@ -1,49 +1,61 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, Alert, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, Alert, StyleSheet, TouchableOpacity, Pressable } from 'react-native';
+import { auth } from '../../firebaseConfig'; // Adjust the path as necessary
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const handleLogin = () => {
-    // Add your login logic here (e.g., authentication with Firebase)
     if (email === '' || password === '') {
       Alert.alert('Error', 'Please fill out all fields.');
-    } else {
-      // You can validate and authenticate the user here
-      Alert.alert('Success', 'Logged in successfully!');
-      navigation.navigate('TabNavigation', { screen: 'Challenge' });
-      // Navigate to Challenge after login
+      return;
     }
+
+    // Firebase authentication
+    signInWithEmailAndPassword(auth, email, password)
+      .then(() => {
+        Alert.alert('Success', 'Logged in successfully!');
+        navigation.navigate('TabNavigation', { screen: 'Challenge' });
+      })
+      .catch((error) => {
+        Alert.alert('Error', error.message);
+      });
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Login</Text>
+      <Text style={styles.title}>Welcome Back</Text>
+
+      <Text style={styles.subtitle}>Please log in to continue</Text>
 
       <TextInput
         style={styles.input}
-        placeholder="Enter your email"
+        placeholder="Email Address"
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
         autoCapitalize="none"
+        placeholderTextColor="#888"
       />
+
       <TextInput
         style={styles.input}
-        placeholder="Enter your password"
+        placeholder="Password"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
+        placeholderTextColor="#888"
       />
 
-      <Button title="Login" onPress={handleLogin} />
+      <Pressable style={styles.loginButton} onPress={handleLogin}>
+        <Text style={styles.loginButtonText}>Login</Text>
+      </Pressable>
 
-      <View style={styles.spacer} />
-
-      {/* Register Link */}
-      <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-        <Text style={styles.registerLink}>Don't have an account? Register</Text>
+      <TouchableOpacity style={styles.registerContainer} onPress={() => navigation.navigate('Register')}>
+        <Text style={styles.registerText}>Don't have an account? </Text>
+        <Text style={styles.registerLink}>Register</Text>
       </TouchableOpacity>
     </View>
   );
@@ -54,28 +66,65 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     padding: 20,
+    backgroundColor: '#f7f7f7',
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 20,
     textAlign: 'center',
+    color: '#333',
+    marginBottom: 10,
+  },
+  subtitle: {
+    fontSize: 16,
+    textAlign: 'center',
+    color: '#666',
+    marginBottom: 30,
   },
   input: {
-    height: 40,
-    borderColor: 'gray',
-    borderWidth: 1,
+    height: 50,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    paddingHorizontal: 15,
     marginBottom: 20,
-    paddingHorizontal: 10,
+    fontSize: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 3,
   },
-  spacer: {
-    height: 20,
+  loginButton: {
+    height: 50,
+    backgroundColor: '#4a90e2',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  loginButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  registerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 20,
+  },
+  registerText: {
+    fontSize: 16,
+    color: '#666',
   },
   registerLink: {
-    color: 'blue',            // Blue color to look like a link
-    textAlign: 'center',
-    textDecorationLine: 'underline',  // Underline the text to enhance the link effect
-    marginTop: 10,
+    fontSize: 16,
+    color: '#4a90e2',
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
 });
 

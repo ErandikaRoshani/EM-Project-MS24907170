@@ -4,6 +4,8 @@ import Geolocation from 'react-native-geolocation-service';
 import { ProgressContext } from '../components/ProgressContext'; // Import the ProgressContext
 import ProgressBar from 'react-native-progress/Bar'; // Progress bar for visual progress indication
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons'; // For adding icons
+import { auth, db } from '../../firebaseConfig'; // Import Firebase config
+import { doc, getDoc, updateDoc } from 'firebase/firestore'; // For Firestore operations
 
 const ChallengeScreen = () => {
   const { level, setLevel } = useContext(ProgressContext); // Access level and setLevel from context
@@ -17,11 +19,29 @@ const ChallengeScreen = () => {
   const [challenges, setChallenges] = useState([
     { level: 1, targetSteps: 1000, rewardGems: 10, isUnlocked: true, completed: false, completedSteps: 0, gpsSteps: 0, manualSteps: 0, totalSteps: 0 },
     { level: 2, targetSteps: 2000, rewardGems: 20, isUnlocked: false, completed: false, completedSteps: 0, gpsSteps: 0, manualSteps: 0, totalSteps: 0 },
-    { level: 3, targetSteps: 3000, rewardGems: 30, isUnlocked: false, completed: false, completedSteps: 0, gpsSteps: 0, manualSteps: 0, totalSteps: 0 },
-    { level: 4, targetSteps: 4000, rewardGems: 40, isUnlocked: false, completed: false, completedSteps: 0, gpsSteps: 0, manualSteps: 0, totalSteps: 0 },
-    { level: 5, targetSteps: 5000, rewardGems: 50, isUnlocked: false, completed: false, completedSteps: 0, gpsSteps: 0, manualSteps: 0, totalSteps: 0 },
+    { level: 3, targetSteps: 3000, rewardGems: 30, isUnlocked: false, completed: false, gpsSteps: 0, manualSteps: 0, totalSteps: 0 },
+    { level: 4, targetSteps: 4000, rewardGems: 40, isUnlocked: false, completed: false, gpsSteps: 0, manualSteps: 0, totalSteps: 0 },
+    { level: 5, targetSteps: 5000, rewardGems: 50, isUnlocked: false, completed: false, gpsSteps: 0, manualSteps: 0, totalSteps: 0 },
   ]);
 
+  // Fetch user data when the component is mounted
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const user = auth.currentUser;
+      if (user) {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setGems(userData.gems || 0); // Initialize gems from Firestore
+          setChallenges(userData.challenges || challenges); // Initialize challenge data from Firestore
+          setLevel(userData.level || 1); // Initialize level from Firestore
+        }
+      }
+    };
+    fetchUserData();
+  }, []);
+
+  // Request location permission and watch GPS position
   useEffect(() => {
     const requestLocationPermission = async () => {
       try {
@@ -47,9 +67,12 @@ const ChallengeScreen = () => {
                 // Update GPS steps for the current challenge
                 setChallenges(prevChallenges => {
                   const updatedChallenges = [...prevChallenges];
-                  if (!updatedChallenges[level - 1].completed) { // Only update if the challenge is not completed
-                    updatedChallenges[level - 1].gpsSteps += steps; // Increment GPS steps for the current challenge
-                    updatedChallenges[level - 1].totalSteps = updatedChallenges[level - 1].gpsSteps + updatedChallenges[level - 1].manualSteps; // Update total steps
+                  if (!updatedChallenges[level - 1].completed) {
+                    updatedChallenges[level - 1].gpsSteps += steps;
+                    updatedChallenges[level - 1].totalSteps = updatedChallenges[level - 1].gpsSteps + updatedChallenges[level - 1].manualSteps;
+
+                    // Update Firestore with new GPS steps
+                    updateUserChallengeProgress(updatedChallenges, gems);
                   }
                   return updatedChallenges;
                 });
@@ -109,35 +132,49 @@ const ChallengeScreen = () => {
     return Math.round(steps); // Return the rounded number of steps
   };
 
+  const updateUserChallengeProgress = async (updatedChallenges, updatedGems) => {
+    try {
+      const user = auth.currentUser;
+      if (user) {
+        const userRef = doc(db, 'users', user.uid);
+        await updateDoc(userRef, {
+          challenges: updatedChallenges, // Update challenge data
+          gems: updatedGems, // Update total gems
+          level: level, // Update current level
+        });
+      }
+    } catch (error) {
+      console.error('Error updating challenge progress:', error);
+    }
+  };
+
   const handleCompleteChallenge = () => {
-    const currentChallengeIndex = level - 1; // Use the level from context
+    const currentChallengeIndex = level - 1;
     const currentChallenge = challenges[currentChallengeIndex];
-  
-    // Check if the current challenge is completed
+
     if (currentChallenge.totalSteps >= currentChallenge.targetSteps) {
-      setGems(gems + currentChallenge.rewardGems);
-  
-      // Update completed status and steps for the current challenge
+      const newGems = gems + currentChallenge.rewardGems; // Add reward gems to total gems
+      setGems(newGems); // Update gems in the state
+
       setChallenges(prevChallenges => {
         const updatedChallenges = [...prevChallenges];
-        updatedChallenges[currentChallengeIndex].completed = true; // Mark as completed
-        updatedChallenges[currentChallengeIndex].completedSteps = currentChallenge.totalSteps; // Save completed steps
-  
-        // Unlock the next challenge if it exists
+        updatedChallenges[currentChallengeIndex].completed = true;
+        updatedChallenges[currentChallengeIndex].completedSteps = currentChallenge.totalSteps;
+
         if (level < challenges.length) {
           updatedChallenges[level].isUnlocked = true; // Unlock the next challenge
         }
+
+        // Update Firestore with the new progress, gems, and level
+        updateUserChallengeProgress(updatedChallenges, newGems);
+
         return updatedChallenges;
       });
-  
-      // Move to the next challenge, but prevent going beyond level 5
+
       if (level < challenges.length) {
-        setLevel(prevLevel => prevLevel + 1); // Move to the next challenge
+        setLevel(prevLevel => prevLevel + 1);
       } else {
-        setLevel(level+1);
-        Alert.alert('Congratulations!', 'You have completed all challenges!'); // Alert for completion
-        // Optionally reset level or navigate to a different screen
-        // setLevel(1); // Uncomment to reset to level 1 if needed
+        Alert.alert('Congratulations!', 'You have completed all challenges!');
       }
     } else {
       Alert.alert('Not enough steps to complete the challenge!');
@@ -145,11 +182,22 @@ const ChallengeScreen = () => {
   };
 
   const renderChallenge = (challenge) => {
-    const isCurrentChallenge = challenge.level === level; // Compare with the level from context
-
+    const isCurrentChallenge = challenge.level === level; // Check if this is the current challenge
+  
+    // Check if the challenge is unlocked and not completed
+    const showManualStepsInput = challenge.isUnlocked && !challenge.completed;
+  
     return (
-      <View key={challenge.level} style={styles.challengeContainer}>
-        <Text style={styles.levelText}>Level {challenge.level}</Text>
+      <View key={challenge.level} style={[styles.challengeContainer, challenge.completed && styles.completedChallenge]}>
+        <View style={styles.headerContainer}>
+          <Text style={styles.levelText}>Level {challenge.level}</Text>
+          <View style={styles.rewardContainer}>
+            <Icon name="diamond" size={20} color="#ffc107" />
+            <Text style={styles.rewardText}>{challenge.rewardGems} gems</Text>
+          </View>
+        </View>
+  
+        {/* Only show target and steps if the challenge is unlocked */}
         {challenge.isUnlocked ? (
           <>
             <Text style={styles.targetText}>Target: {challenge.targetSteps} steps</Text>
@@ -175,38 +223,39 @@ const ChallengeScreen = () => {
               <Icon name="pencil" size={20} color="#007BFF" />
               <Text style={styles.stepsText}>Manual Steps: {challenge.manualSteps}</Text>
             </View>
-            <Text style={styles.rewardText}>
-              <Icon name="diamond" size={20} color="#FFA500" /> Reward: {challenge.rewardGems} gems
-            </Text>
-
-            {challenge.completed ? (
-              <Text style={styles.completedText}>Completed</Text>
-            ) : (
-              isCurrentChallenge && (
-                <>
-                  <TextInput
-                    placeholder="Add Manual Steps"
-                    keyboardType="numeric"
-                    onChangeText={(value) => {
+  
+            {/* Show manual steps input and complete button if the challenge is unlocked and not completed */}
+            {showManualStepsInput && (
+              <>
+                <TextInput
+                  placeholder="Enter manual steps"
+                  keyboardType="numeric"
+                  style={styles.input}
+                  onSubmitEditing={(event) => {
+                    const manualSteps = parseInt(event.nativeEvent.text, 10);
+                    if (!isNaN(manualSteps) && manualSteps > 0) {
                       setChallenges(prevChallenges => {
                         const updatedChallenges = [...prevChallenges];
-                        if (!updatedChallenges[level - 1].completed) { // Update only if the challenge is not completed
-                          updatedChallenges[level - 1].manualSteps = Number(value); // Update manual steps for the current challenge
-                          updatedChallenges[level - 1].totalSteps = updatedChallenges[level - 1].gpsSteps + updatedChallenges[level - 1].manualSteps; // Update total steps
-                        }
+                        updatedChallenges[level - 1].manualSteps += manualSteps; // Update the current challenge manual steps
+                        updatedChallenges[level - 1].totalSteps = updatedChallenges[level - 1].gpsSteps + updatedChallenges[level - 1].manualSteps;
+  
+                        // Update Firestore with new manual steps
+                        updateUserChallengeProgress(updatedChallenges, gems);
                         return updatedChallenges;
                       });
-                    }}
-                    style={styles.input}
-                  />
-                  <TouchableOpacity style={styles.completeButton} onPress={handleCompleteChallenge}>
-                    <Text style={styles.completeButtonText}>Complete Challenge</Text>
-                  </TouchableOpacity>
-                </>
-              )
+                    } else {
+                      Alert.alert("Invalid input", "Please enter a valid number of steps.");
+                    }
+                  }}
+                />
+                <TouchableOpacity onPress={handleCompleteChallenge} style={styles.button}>
+                  <Text style={styles.buttonText}>Complete Challenge</Text>
+                </TouchableOpacity>
+              </>
             )}
           </>
         ) : (
+          // Show lock container only for locked challenges
           <View style={styles.lockedContainer}>
             <View style={styles.lockedChallenge}>
               <Icon name="lock" size={30} color="#d9534f" />
@@ -218,23 +267,36 @@ const ChallengeScreen = () => {
       </View>
     );
   };
+  
+
+  
+  
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.header}>Challenge Screen</Text>
-      {challenges.map(renderChallenge)}
       <Text style={styles.gemsText}>
         <Icon name="diamond" size={20} color="#FFA500" /> Gems: {gems}
       </Text>
+      {challenges.map(challenge => renderChallenge(challenge))}
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    padding: 20,
+    padding: 16,
+  },
+  challengeContainer: {
+    marginBottom: 20,
+    padding: 16,
+    borderRadius: 8,
     backgroundColor: '#f8f9fa',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   header: {
     fontSize: 24,
@@ -243,68 +305,59 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#333',
   },
-  challengeContainer: {
-    marginBottom: 20,
-    padding: 15,
-    borderRadius: 10,
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+  completedChallenge: {
+    backgroundColor: '#d4edda',
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   levelText: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+  },
+  rewardContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rewardText: {
+    marginLeft: 4,
+    fontSize: 16,
   },
   targetText: {
+    marginVertical: 8,
     fontSize: 16,
-    marginVertical: 5,
-    color: '#555',
   },
   progressContainer: {
-    marginVertical: 10,
+    marginBottom: 12,
   },
   stepsInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 5,
+    marginBottom: 4,
   },
   stepsText: {
-    marginLeft: 5,
+    marginLeft: 8,
     fontSize: 16,
-    color: '#333',
-  },
-  rewardText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#28a745',
-    marginVertical: 5,
-  },
-  completedText: {
-    fontSize: 16,
-    color: '#28a745',
-    marginVertical: 10,
   },
   input: {
+    height: 40,
+    borderColor: '#ced4da',
     borderWidth: 1,
-    borderColor: '#007BFF',
-    borderRadius: 5,
-    padding: 10,
-    marginVertical: 10,
-    color: '#333',
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    marginBottom: 12,
   },
-  completeButton: {
+  button: {
     backgroundColor: '#007BFF',
-    borderRadius: 5,
-    padding: 10,
-    alignItems: 'center',
+    paddingVertical: 10,
+    borderRadius: 4,
   },
-  completeButtonText: {
+  buttonText: {
     color: '#fff',
-    fontWeight: 'bold',
+    textAlign: 'center',
+    fontSize: 16,
   },
   lockedContainer: {
     flexDirection: 'column',

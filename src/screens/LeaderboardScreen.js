@@ -1,35 +1,56 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, StyleSheet, FlatList } from 'react-native';
-import { getOfflineProgress } from '../services/OfflineService';
+import { auth, db } from '../../firebaseConfig'; // Import Firebase config
+import { collection, getDocs } from 'firebase/firestore'; // For Firestore operations
+import { ProgressContext } from '../components/ProgressContext'; // Assuming you have a context for user progress
+import Icon from 'react-native-vector-icons/FontAwesome'; // Import the icon library
 
 const LeaderboardScreen = () => {
+  const { level, gems } = useContext(ProgressContext); // Access level and gems from context
   const [leaderboardData, setLeaderboardData] = useState([]);
 
   useEffect(() => {
-    // Mock leaderboard data
-    const mockData = [
-      { id: '1', name: 'User 1', score: 100, streak: 5, level: 2, badges: ['Level 2 Achieved!'] },
-      { id: '2', name: 'User 2', score: 80, streak: 3, level: 1, badges: [] },
-      { id: '3', name: 'User 3', score: 70, streak: 1, level: 3, badges: ['Level 3 Achieved!'] },
-    ];
-
-    // Load progress data from local storage
-    getOfflineProgress('currentChallenge').then((data) => {
-      if (data) {
-        // Update leaderboard based on challenge progress, streak, levels, and badges
-        const updatedData = mockData.map((user) => ({
-          ...user,
-          score: data.progress * 100, // Using progress as score
-          streak: data.streak, // Add user streak
-          level: data.level, // Add user level
-          badges: data.badges || [], // Add user badges
+    const fetchLeaderboardData = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'users'));
+        const usersData = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
         }));
-        setLeaderboardData(updatedData);
-      } else {
-        setLeaderboardData(mockData);
+
+        // Sort users by score (gems) in descending order
+        const sortedData = usersData.sort((a, b) => b.gems - a.gems);
+        setLeaderboardData(sortedData);
+      } catch (error) {
+        console.error('Error fetching leaderboard data: ', error);
       }
-    });
+    };
+
+    fetchLeaderboardData();
   }, []);
+
+  const renderItem = ({ item }) => {
+    const isCurrentUser = item.id === auth.currentUser.uid; // Check if this is the current user
+
+    return (
+      <View style={[styles.item, isCurrentUser && styles.currentUser]}>
+        <View style={styles.userInfo}>
+          <Icon name="user" size={24} color={isCurrentUser ? '#155724' : '#6c757d'} style={styles.icon} />
+          <Text style={[styles.name, isCurrentUser && styles.currentUserName]}>{item.username}</Text>
+        </View>
+        <View style={styles.details}>
+          <View style={styles.detailItem}>
+            <Icon name="star" size={16} color="#ffc107" />
+            <Text style={styles.level}>Level: {item.level}</Text>
+          </View>
+          <View style={styles.detailItem}>
+            <Icon name="diamond" size={16} color="#6c757d" />
+            <Text style={styles.gems}>Gems: {item.gems}</Text>
+          </View>
+        </View>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -38,15 +59,8 @@ const LeaderboardScreen = () => {
       <FlatList
         data={leaderboardData}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.item}>
-            <Text style={styles.name}>{item.name}</Text>
-            <Text style={styles.score}>Score: {item.score}</Text>
-            <Text style={styles.streak}>Streak: {item.streak} days</Text>
-            <Text style={styles.level}>Level: {item.level}</Text>
-            <Text style={styles.badges}>Badges: {item.badges.join(', ')}</Text>
-          </View>
-        )}
+        renderItem={renderItem}
+        contentContainerStyle={{ paddingBottom: 20 }}
       />
     </View>
   );
@@ -56,35 +70,60 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
+    backgroundColor: '#f8f9fa', // Light background color
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 20,
+    color: '#343a40', // Darker color for the title
   },
   item: {
     padding: 15,
     borderBottomWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#dee2e6',
+    borderRadius: 5,
+    backgroundColor: '#ffffff', // White background for items
+    marginBottom: 10,
+    elevation: 2, // Add some elevation for shadow
+  },
+  currentUser: {
+    backgroundColor: '#d4edda', // Light green background for current user
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  details: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  detailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  icon: {
+    marginRight: 10,
+  },
+  currentUserName: {
+    fontWeight: 'bold', // Bold text for current user
+    color: '#155724', // Dark green text color
   },
   name: {
     fontSize: 18,
-  },
-  score: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  streak: {
-    fontSize: 16,
+    color: '#212529', // Dark text color
   },
   level: {
     fontSize: 16,
-    fontWeight: 'bold',
+    color: '#495057', // Darker text for level
+    marginLeft: 5,
   },
-  badges: {
-    fontSize: 14,
-    color: 'green',
+  gems: {
+    fontSize: 16,
+    color: '#6c757d', // Gray color for gems
+    marginLeft: 5,
   },
 });
 
