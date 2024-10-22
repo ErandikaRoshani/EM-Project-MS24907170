@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState, useContext } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Dimensions, Animated } from 'react-native';
 import { GameEngine } from 'react-native-game-engine';
-import { ProgressContext } from '../components/ProgressContext';
+import {useProgressContext} from '../components/ProgressContext';
 import { ProgressBar } from 'react-native-paper';
 
 const { width, height } = Dimensions.get('window');
@@ -17,19 +17,19 @@ const pathPoints = [
 
 const ChallengeJourney = () => {
   const gameEngineRef = useRef(null);
-  const { progress, level, updateProgress } = useContext(ProgressContext);
+  const { progress, level, updateProgress } = useProgressContext();
   const [currentPosition, setCurrentPosition] = useState(0);
   const animatedValue = useRef(new Animated.ValueXY(pathPoints[0])).current;
 
   useEffect(() => {
-    
+
     const newPositionIndex = level > 1 ? level - 2 : 0; // Position below the current level
-    
+
     const newPoint = pathPoints[newPositionIndex];
-    
+
 
     // Move the character to the completed level point only when level is completed
-    if (level > 1 && level-1 <= pathPoints.length) {
+    if (level > 1 && level - 1 <= pathPoints.length) {
       Animated.timing(animatedValue, {
         toValue: { x: newPoint.x, y: newPoint.y },
         duration: 1000,
@@ -38,7 +38,7 @@ const ChallengeJourney = () => {
     }
 
     setCurrentPosition(newPositionIndex);
-  }, [level]);
+  }, [animatedValue, level]);
 
 
   const overallProgress = (level - 1) * 20; // Each level completion is 20%
@@ -49,10 +49,10 @@ const ChallengeJourney = () => {
         <Text style={styles.title}>Challenge Journey</Text>
 
         {/* Progress Bar */}
-        <ProgressBar 
-          progress={overallProgress / 100} 
-          style={styles.progressBar} 
-          color="#28a745" 
+        <ProgressBar
+          progress={overallProgress / 100}
+          style={styles.progressBar}
+          color="#28a745"
         />
         <Text style={styles.overallProgressText}>Overall Progress: {overallProgress.toFixed(0)}%</Text>
 
