@@ -12,9 +12,9 @@ export const badges = [
     id: 2,
     icon: 'trophy',
     name: 'Challenge Champion',
-    description: 'Complete 5 challenges',
+    description: 'Complete 3 challenges',
     earned: false,
-    criteria: { completedChallenges: 5 }
+    criteria: { completedChallenges: 3 }
   },
   {
     id: 3,

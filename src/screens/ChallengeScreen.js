@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, Button, TextInput, StyleSheet, ScrollView, Alert, PermissionsAndroid, TouchableOpacity } from 'react-native';
+import React, {useState, useEffect, useCallback} from 'react';
+import { View, Text, TextInput, StyleSheet, ScrollView, Alert, PermissionsAndroid, TouchableOpacity } from 'react-native';
 import Geolocation from 'react-native-geolocation-service';
-import { ProgressContext } from '../components/ProgressContext'; // Import the ProgressContext
+import {useProgressContext} from '../components/ProgressContext'; // Import the ProgressContext
 import ProgressBar from 'react-native-progress/Bar'; // Progress bar for visual progress indication
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons'; // For adding icons
 import { auth, db } from '../../firebaseConfig'; // Import Firebase config
@@ -9,41 +9,33 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore'; // For Firestore op
 import GemCounter from '../components/GemCounter';
 
 const ChallengeScreen = () => {
-  const { level, setLevel } = useContext(ProgressContext); // Access level and setLevel from context
-  const [gems, setGems] = useState(0);
+  const { level, setLevel, gems, setGems, challenges, setChallenges } = useProgressContext();
   const [watchId, setWatchId] = useState(null);
   const [lastPosition, setLastPosition] = useState(null);
 
   const stepsPerMile = 2000; // Average steps per mile
   const metersPerMile = 1609.34; // Meters in a mile
 
-  const [challenges, setChallenges] = useState([
-    { level: 1, targetSteps: 1000, rewardGems: 10, isUnlocked: true, completed: false, completedSteps: 0, gpsSteps: 0, manualSteps: 0, totalSteps: 0 },
-    { level: 2, targetSteps: 2000, rewardGems: 20, isUnlocked: false, completed: false, completedSteps: 0, gpsSteps: 0, manualSteps: 0, totalSteps: 0 },
-    { level: 3, targetSteps: 3000, rewardGems: 30, isUnlocked: false, completed: false, gpsSteps: 0, manualSteps: 0, totalSteps: 0 },
-    { level: 4, targetSteps: 4000, rewardGems: 40, isUnlocked: false, completed: false, gpsSteps: 0, manualSteps: 0, totalSteps: 0 },
-    { level: 5, targetSteps: 5000, rewardGems: 50, isUnlocked: false, completed: false, gpsSteps: 0, manualSteps: 0, totalSteps: 0 },
-  ]);
-
   // Fetch user data when the component is mounted
-  useEffect(() => {
-    const fetchUserData = async () => {
-      const user = auth.currentUser;
-      if (user) {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          setGems(userData.gems || 0); // Initialize gems from Firestore
-          setChallenges(userData.challenges || challenges); // Initialize challenge data from Firestore
-          setLevel(userData.level || 1); // Initialize level from Firestore
-        }
-      }
-    };
-    fetchUserData();
-  }, []);
+  // useEffect(() => {
+  //   const fetchUserData = async () => {
+  //     const user = auth.currentUser;
+  //     if (user) {
+  //       const userDoc = await getDoc(doc(db, 'users', user.uid));
+  //       if (userDoc.exists()) {
+  //         const userData = userDoc.data();
+  //         setGems(userData.gems || 0); // Initialize gems from Firestore
+  //         setChallenges(userData.challenges); // Initialize challenge data from Firestore
+  //         setLevel(userData.level || 1); // Initialize level from Firestore
+  //       }
+  //     }
+  //   };
+  //   fetchUserData().then();
+  // }, [setLevel]);
 
   // Request location permission and watch GPS position
   useEffect(() => {
+    console.log('UUU', level);
     const requestLocationPermission = async () => {
       try {
         const granted = await PermissionsAndroid.request(
@@ -82,7 +74,7 @@ const ChallengeScreen = () => {
             },
             error => {
               console.error(error);
-              Alert.alert("Error", "Unable to access GPS. Please check your settings.");
+              Alert.alert('Error', 'Unable to access GPS. Please check your settings.');
             },
             {
               enableHighAccuracy: true,
@@ -97,7 +89,7 @@ const ChallengeScreen = () => {
           Alert.alert('Permission denied', 'Please enable location permissions in settings.');
         }
       } catch (error) {
-        console.error("Error requesting location permission:", error);
+        console.error('Error requesting location permission:', error);
       }
     };
 
@@ -108,7 +100,7 @@ const ChallengeScreen = () => {
         Geolocation.clearWatch(watchId);
       }
     };
-  }, [lastPosition]);
+  }, [gems, lastPosition, level]);
 
   const calculateDistance = (lastPosition, currentPosition) => {
     const { latitude: lat1, longitude: lon1 } = lastPosition;
@@ -133,7 +125,7 @@ const ChallengeScreen = () => {
     return Math.round(steps); // Return the rounded number of steps
   };
 
-  const updateUserChallengeProgress = async (updatedChallenges, updatedGems) => {
+  const updateUserChallengeProgress = useCallback(async (updatedChallenges, updatedGems) => {
     try {
       const user = auth.currentUser;
       if (user) {
@@ -141,13 +133,13 @@ const ChallengeScreen = () => {
         await updateDoc(userRef, {
           challenges: updatedChallenges, // Update challenge data
           gems: updatedGems, // Update total gems
-          level: level, // Update current level
+          level: level === 5 ? level : level + 1, // Update current level
         });
       }
     } catch (error) {
       console.error('Error updating challenge progress:', error);
     }
-  };
+  }, [level]);
 
   const handleCompleteChallenge = () => {
     const currentChallengeIndex = level - 1;
@@ -167,7 +159,7 @@ const ChallengeScreen = () => {
         }
 
         // Update Firestore with the new progress, gems, and level
-        updateUserChallengeProgress(updatedChallenges, newGems);
+        updateUserChallengeProgress(updatedChallenges, newGems).then();
 
         return updatedChallenges;
       });
@@ -184,10 +176,10 @@ const ChallengeScreen = () => {
 
   const renderChallenge = (challenge) => {
     const isCurrentChallenge = challenge.level === level; // Check if this is the current challenge
-  
+
     // Check if the challenge is unlocked and not completed
     const showManualStepsInput = challenge.isUnlocked && !challenge.completed;
-  
+
     return (
       <View key={challenge.level} style={[styles.challengeContainer, challenge.completed && styles.completedChallenge]}>
         <View style={styles.headerContainer}>
@@ -197,15 +189,15 @@ const ChallengeScreen = () => {
             <Text style={styles.rewardText}>{challenge.rewardGems} gems</Text>
           </View>
         </View>
-  
+
         {/* Only show target and steps if the challenge is unlocked */}
         {challenge.isUnlocked ? (
           <>
             <Text style={styles.targetText}>Target: {challenge.targetSteps} steps</Text>
             <View style={styles.progressContainer}>
-              <ProgressBar 
-                progress={challenge.totalSteps / challenge.targetSteps} 
-                width={null} // Full width 
+              <ProgressBar
+                progress={challenge.totalSteps / challenge.targetSteps}
+                width={null} // Full width
                 color="#28a745"
                 height={12}
                 borderRadius={8}
@@ -224,11 +216,11 @@ const ChallengeScreen = () => {
               <Icon name="pencil" size={20} color="#007BFF" />
               <Text style={styles.stepsText}>Manual Steps: {challenge.manualSteps}</Text>
             </View>
-  
+
             {/* Show manual steps input and complete button if the challenge is unlocked and not completed */}
             {showManualStepsInput && (
               <>
-                <TextInput
+               <TextInput
   placeholder="Enter manual steps"
   keyboardType="numeric"
   style={styles.input}
@@ -237,20 +229,17 @@ const ChallengeScreen = () => {
     if (!isNaN(manualSteps) && manualSteps > 0) {
       setChallenges(prevChallenges => {
         const updatedChallenges = [...prevChallenges];
-        const currentChallengeIndex = level; // Use level directly to access the current challenge
+        const currentChallengeIndex = level - 1; // Adjust index for zero-based array
 
-        // Update the current challenge manual steps
-        updatedChallenges[currentChallengeIndex].manualSteps += manualSteps;
-        updatedChallenges[currentChallengeIndex].totalSteps = 
-          updatedChallenges[currentChallengeIndex].gpsSteps + 
-          updatedChallenges[currentChallengeIndex].manualSteps;
+        updatedChallenges[currentChallengeIndex].manualSteps += manualSteps; // Update the current challenge manual steps
+        updatedChallenges[currentChallengeIndex].totalSteps = updatedChallenges[currentChallengeIndex].gpsSteps + updatedChallenges[currentChallengeIndex].manualSteps;
 
         // Update Firestore with new manual steps
-        updateUserChallengeProgress(updatedChallenges, gems);
+        updateUserChallengeProgress(updatedChallenges, gems).then();
         return updatedChallenges;
       });
     } else {
-      Alert.alert("Invalid input", "Please enter a valid number of steps.");
+      Alert.alert('Invalid input', 'Please enter a valid number of steps.');
     }
   }}
 />
@@ -274,22 +263,13 @@ const ChallengeScreen = () => {
       </View>
     );
   };
-  
-
-  
-  
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-    <Text style={styles.header}>Challenge Screen</Text>
-    
-    {/* Animated gem counter */}
-    <GemCounter gems={gems} /> 
-    
-
-    
-    {challenges.map(challenge => renderChallenge(challenge))}
-  </ScrollView>
+      <Text style={styles.header}>Challenge Screen</Text>
+      <GemCounter gems={gems} /> 
+      {challenges?.map(challenge => renderChallenge(challenge))}
+    </ScrollView>
   );
 };
 

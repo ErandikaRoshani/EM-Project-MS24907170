@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Alert, StyleSheet, Pressable } from 'react-native';
+import { View, Text, TextInput, Alert, StyleSheet, Pressable, TouchableOpacity } from 'react-native';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebaseConfig';
@@ -31,7 +31,7 @@ const RegisterScreen = ({ navigation }) => {
       });
 
       Alert.alert('Success', 'User registered successfully!');
-      navigation.navigate('Login')
+      navigation.navigate('Login');
     } catch (error) {
       console.error("Registration error:", error);
       Alert.alert('Error', error.message);
@@ -41,7 +41,6 @@ const RegisterScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Create Account</Text>
-
       <Text style={styles.subtitle}>Sign up to get started</Text>
 
       <TextInput
@@ -83,6 +82,12 @@ const RegisterScreen = ({ navigation }) => {
       <Pressable style={styles.registerButton} onPress={handleRegister}>
         <Text style={styles.registerButtonText}>Register</Text>
       </Pressable>
+
+      {/* Link to Login */}
+      <TouchableOpacity style={styles.loginContainer} onPress={() => navigation.navigate('Login')}>
+        <Text style={styles.loginText}>Already have an account? </Text>
+        <Text style={styles.loginLink}>Login</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -136,6 +141,21 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: '600',
+  },
+  loginContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 20,
+  },
+  loginText: {
+    fontSize: 16,
+    color: '#666',
+  },
+  loginLink: {
+    fontSize: 16,
+    color: '#4a90e2',
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
 });
 

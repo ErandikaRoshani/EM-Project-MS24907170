@@ -35,9 +35,12 @@ const UserProfile = ({ navigation }) => {
   }, []);
 
   const unlockBadges = (data) => {
+    // Count the number of completed challenges
+    const completedChallengesCount = data.challenges.filter(challenge => challenge.completed).length;
+  
     const updatedBadges = userBadges.map(badge => {
       let earned = badge.earned;
-
+  
       // Check criteria for unlocking each badge
       if (badge.criteria.gems && data.gems >= badge.criteria.gems) {
         earned = true;
@@ -45,15 +48,16 @@ const UserProfile = ({ navigation }) => {
       if (badge.criteria.steps && data.totalSteps >= badge.criteria.steps) {
         earned = true;
       }
-      if (badge.criteria.completedChallenges && data.completedChallenges >= badge.criteria.completedChallenges) {
+      if (badge.criteria.completedChallenges && completedChallengesCount >= badge.criteria.completedChallenges) {
         earned = true;
       }
-
+  
       return { ...badge, earned }; // Return updated badge
     });
-
+  
     setUserBadges(updatedBadges); // Update badges state
   };
+  
 
   // Handle logout
   const handleLogout = () => {

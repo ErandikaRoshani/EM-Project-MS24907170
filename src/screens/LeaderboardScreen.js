@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList } from 'react-native';
 import { auth, db } from '../../firebaseConfig'; // Import Firebase config
 import { collection, getDocs } from 'firebase/firestore'; // For Firestore operations
-import { ProgressContext } from '../components/ProgressContext'; // Assuming you have a context for user progress
+import {useProgressContext} from '../components/ProgressContext'; // Assuming you have a context for user progress
 import Icon from 'react-native-vector-icons/FontAwesome'; // Import the icon library
 
 const LeaderboardScreen = () => {
-  const { level, gems } = useContext(ProgressContext); // Access level and gems from context
+  const { level, gems } = useProgressContext();
   const [leaderboardData, setLeaderboardData] = useState([]);
 
   useEffect(() => {
@@ -26,7 +26,7 @@ const LeaderboardScreen = () => {
       }
     };
 
-    fetchLeaderboardData();
+    fetchLeaderboardData().then();
   }, []);
 
   const renderItem = ({ item }) => {
