@@ -1,11 +1,15 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { auth, db } from '../../firebaseConfig'; // Import Firebase config
 import { doc, getDoc } from 'firebase/firestore'; // Firestore functions
+import { signOut } from 'firebase/auth'; // Firebase signOut function
+import BadgeComponent from '../components/Badge'; // Import the BadgeComponent
+import { badges } from '../data/BadgeData'; // Import badge data
 
-const UserProfile = () => {
+const UserProfile = ({ navigation }) => {
   const [userData, setUserData] = useState(null); // State to hold user data
+  const [userBadges, setUserBadges] = useState(badges); // State to hold user badges
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -14,7 +18,11 @@ const UserProfile = () => {
         const userDoc = await getDoc(doc(db, 'users', userId)); // Get user document from Firestore
 
         if (userDoc.exists()) {
-          setUserData(userDoc.data()); // Set user data to state
+          const data = userDoc.data();
+          setUserData(data); // Set user data to state
+
+          // Unlock badges based on user data
+          unlockBadges(data);
         } else {
           console.log('No such user!');
         }
@@ -26,6 +34,39 @@ const UserProfile = () => {
     fetchUserData();
   }, []);
 
+  const unlockBadges = (data) => {
+    const updatedBadges = userBadges.map(badge => {
+      let earned = badge.earned;
+
+      // Check criteria for unlocking each badge
+      if (badge.criteria.gems && data.gems >= badge.criteria.gems) {
+        earned = true;
+      }
+      if (badge.criteria.steps && data.totalSteps >= badge.criteria.steps) {
+        earned = true;
+      }
+      if (badge.criteria.completedChallenges && data.completedChallenges >= badge.criteria.completedChallenges) {
+        earned = true;
+      }
+
+      return { ...badge, earned }; // Return updated badge
+    });
+
+    setUserBadges(updatedBadges); // Update badges state
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    signOut(auth)
+      .then(() => {
+        // Successfully logged out, navigate to login screen
+        navigation.replace('Login'); // Redirect to Login screen after logout
+      })
+      .catch((error) => {
+        Alert.alert('Logout Failed', error.message);
+      });
+  };
+
   // If userData is not loaded yet, show a loading indicator
   if (!userData) {
     return (
@@ -36,17 +77,17 @@ const UserProfile = () => {
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
       {/* Header */}
       <Text style={styles.header}>My Profile</Text>
-
+  
       {/* Profile Card */}
       <View style={styles.profileCard}>
         {/* Profile Icon */}
         <View style={styles.profileIconContainer}>
           <Icon name="account" size={100} color={"#fff"} />
         </View>
-
+  
         {/* User Information */}
         <View style={styles.userInfoContainer}>
           <Text style={styles.userName}>{userData.name}</Text>
@@ -64,15 +105,29 @@ const UserProfile = () => {
           </View>
         </View>
       </View>
-    </View>
+  
+      {/* Badges Section */}
+      <View style={styles.badgesSection}>
+        <Text style={styles.badgesHeader}>Your Badges</Text>
+        <View style={styles.badgesContainer}>
+          {userBadges.map((badge) => (
+            <BadgeComponent key={badge.id} badge={badge} />
+          ))}
+        </View>
+      </View>
+  
+      {/* Logout Button */}
+      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <Text style={styles.logoutButtonText}>Logout</Text>
+      </TouchableOpacity>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     backgroundColor: '#f8f8f8',
     padding: 20,
   },
@@ -141,6 +196,34 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#155724',
     marginLeft: 10,
+  },
+  badgesSection: {
+    width: '100%',
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  badgesHeader: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#343a40',
+    marginBottom: 10,
+  },
+  badgesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+  logoutButton: {
+    marginTop: 30,
+    backgroundColor: '#155724',
+    paddingVertical: 10,
+    paddingHorizontal: 40,
+    borderRadius: 5,
+  },
+  logoutButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });
 

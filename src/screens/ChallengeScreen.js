@@ -6,6 +6,7 @@ import ProgressBar from 'react-native-progress/Bar'; // Progress bar for visual 
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons'; // For adding icons
 import { auth, db } from '../../firebaseConfig'; // Import Firebase config
 import { doc, getDoc, updateDoc } from 'firebase/firestore'; // For Firestore operations
+import GemCounter from '../components/GemCounter';
 
 const ChallengeScreen = () => {
   const { level, setLevel } = useContext(ProgressContext); // Access level and setLevel from context
@@ -228,26 +229,32 @@ const ChallengeScreen = () => {
             {showManualStepsInput && (
               <>
                 <TextInput
-                  placeholder="Enter manual steps"
-                  keyboardType="numeric"
-                  style={styles.input}
-                  onSubmitEditing={(event) => {
-                    const manualSteps = parseInt(event.nativeEvent.text, 10);
-                    if (!isNaN(manualSteps) && manualSteps > 0) {
-                      setChallenges(prevChallenges => {
-                        const updatedChallenges = [...prevChallenges];
-                        updatedChallenges[level - 1].manualSteps += manualSteps; // Update the current challenge manual steps
-                        updatedChallenges[level - 1].totalSteps = updatedChallenges[level - 1].gpsSteps + updatedChallenges[level - 1].manualSteps;
-  
-                        // Update Firestore with new manual steps
-                        updateUserChallengeProgress(updatedChallenges, gems);
-                        return updatedChallenges;
-                      });
-                    } else {
-                      Alert.alert("Invalid input", "Please enter a valid number of steps.");
-                    }
-                  }}
-                />
+  placeholder="Enter manual steps"
+  keyboardType="numeric"
+  style={styles.input}
+  onSubmitEditing={(event) => {
+    const manualSteps = parseInt(event.nativeEvent.text, 10);
+    if (!isNaN(manualSteps) && manualSteps > 0) {
+      setChallenges(prevChallenges => {
+        const updatedChallenges = [...prevChallenges];
+        const currentChallengeIndex = level; // Use level directly to access the current challenge
+
+        // Update the current challenge manual steps
+        updatedChallenges[currentChallengeIndex].manualSteps += manualSteps;
+        updatedChallenges[currentChallengeIndex].totalSteps = 
+          updatedChallenges[currentChallengeIndex].gpsSteps + 
+          updatedChallenges[currentChallengeIndex].manualSteps;
+
+        // Update Firestore with new manual steps
+        updateUserChallengeProgress(updatedChallenges, gems);
+        return updatedChallenges;
+      });
+    } else {
+      Alert.alert("Invalid input", "Please enter a valid number of steps.");
+    }
+  }}
+/>
+
                 <TouchableOpacity onPress={handleCompleteChallenge} style={styles.button}>
                   <Text style={styles.buttonText}>Complete Challenge</Text>
                 </TouchableOpacity>
@@ -274,12 +281,15 @@ const ChallengeScreen = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.header}>Challenge Screen</Text>
-      <Text style={styles.gemsText}>
-        <Icon name="diamond" size={20} color="#FFA500" /> Gems: {gems}
-      </Text>
-      {challenges.map(challenge => renderChallenge(challenge))}
-    </ScrollView>
+    <Text style={styles.header}>Challenge Screen</Text>
+    
+    {/* Animated gem counter */}
+    <GemCounter gems={gems} /> 
+    
+
+    
+    {challenges.map(challenge => renderChallenge(challenge))}
+  </ScrollView>
   );
 };
 
