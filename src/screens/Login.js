@@ -20,7 +20,7 @@ const LoginScreen = ({ navigation }) => {
         navigation.navigate('TabNavigation', { screen: 'Challenge' });
       })
       .catch((error) => {
-        Alert.alert('Error', error.message);
+        Alert.alert('Please enter valid credentials');
       });
   };
 

@@ -27,16 +27,7 @@ const TabNavigator = () => {
             },
           }}
         />
-        <Tab.Screen
-          name="Leaderboard"
-          component={LeaderboardScreen}
-          options={{
-            tabBarIcon: ({color, size}) => {
-              return <Icon name="account-group" size={size} color={color} />;
-            },
-          }}
-        />
-        <Tab.Screen
+          <Tab.Screen
           name="ChallengeJourney"
           component={ChallengeJourney}
           options={{
@@ -44,6 +35,15 @@ const TabNavigator = () => {
               return (
                 <Icon name="map-marker-radius" size={size} color={color} />
               );
+            },
+          }}
+        />
+        <Tab.Screen
+          name="Leaderboard"
+          component={LeaderboardScreen}
+          options={{
+            tabBarIcon: ({color, size}) => {
+              return <Icon name="account-group" size={size} color={color} />;
             },
           }}
         />
