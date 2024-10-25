@@ -1,7 +1,7 @@
 import React, {createContext, useContext, useEffect, useState} from 'react';
 import {auth, db} from '../../firebaseConfig';
 import {doc, getDoc} from 'firebase/firestore';
-
+import { ref, get } from 'firebase/database';
 // Create the context
 const ProgressContext = createContext({});
 
@@ -15,10 +15,10 @@ export const ProgressProvider = ({ children }) => {
     const fetchUserData = async () => {
       const user = auth.currentUser;
       if (user) {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          console.log(userData);
+        const userRef = ref(db, `users/${user.uid}`); // Reference the user's data in Realtime Database
+        const snapshot = await get(userRef); // Get the data from Realtime Database
+        if (snapshot.exists()) {
+          const userData = snapshot.val();
           setGems(userData?.gems ?? 0); // Initialize gems from Firestore
           setChallenges(userData?.challenges ?? [
             { level: 1, targetSteps: 1000, rewardGems: 10, isUnlocked: true, completed: false, completedSteps: 0, gpsSteps: 0, manualSteps: 0, totalSteps: 0 },

@@ -1,22 +1,41 @@
-import React, { useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import { View, Text, TextInput, Alert, StyleSheet, TouchableOpacity, Pressable } from 'react-native';
 import { auth } from '../../firebaseConfig'; // Adjust the path as necessary
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
+  useEffect(() => {
+      const checkLogin = async () => {
+        const data = await AsyncStorage.getItem('user-data');
+        if(data){
+          const userData = JSON.parse(data);
+          signInWithEmailAndPassword(auth, userData.email, userData.password)
+              .then(async () => {
+                Alert.alert('Success', 'Logged in successfully!');
+                navigation.navigate('TabNavigation', { screen: 'Challenge' });
+              })
+              .catch((error) => {
+                Alert.alert('Error', error.message);
+              });
+        }
+      };
+      checkLogin().then();
+  }, [navigation]);
 
   const handleLogin = () => {
     if (email === '' || password === '') {
       Alert.alert('Error', 'Please fill out all fields.');
       return;
     }
-
     // Firebase authentication
     signInWithEmailAndPassword(auth, email, password)
-      .then(() => {
+      .then(async () => {
         Alert.alert('Success', 'Logged in successfully!');
+        await AsyncStorage.setItem('user-data', JSON.stringify({email, password}));
         navigation.navigate('TabNavigation', { screen: 'Challenge' });
       })
       .catch((error) => {

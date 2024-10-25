@@ -1,20 +1,24 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import {View, Text, StyleSheet, ActivityIndicator, Pressable} from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { auth, db } from '../../firebaseConfig'; // Import Firebase config
-import { doc, getDoc } from 'firebase/firestore'; // Firestore functions
+import { doc, getDoc } from 'firebase/firestore';
+import { ref, get } from 'firebase/database';
+import AsyncStorage from '@react-native-async-storage/async-storage'; // Firestore functions
 
-const UserProfile = () => {
+const UserProfile = ({ navigation }) => {
   const [userData, setUserData] = useState(null); // State to hold user data
 
   useEffect(() => {
     const fetchUserData = async () => {
-      try {
-        const userId = auth.currentUser.uid; // Get the current user's ID
-        const userDoc = await getDoc(doc(db, 'users', userId)); // Get user document from Firestore
+      const userId = auth.currentUser.uid; // Get the current user's ID
+      const userRef = ref(db, `users/${userId}`); // Reference to the user node in Realtime Database
 
-        if (userDoc.exists()) {
-          setUserData(userDoc.data()); // Set user data to state
+      try {
+        const snapshot = await get(userRef); // Get user data from Realtime Database
+
+        if (snapshot.exists()) {
+          setUserData(snapshot.val()); // Set user data to state
         } else {
           console.log('No such user!');
         }
@@ -23,8 +27,14 @@ const UserProfile = () => {
       }
     };
 
-    fetchUserData();
+    fetchUserData().then();
   }, []);
+
+  const handleLogout = async () => {
+    await AsyncStorage.removeItem('user-data');
+    await auth.signOut();
+    navigation.navigate('Login');
+  };
 
   // If userData is not loaded yet, show a loading indicator
   if (!userData) {
@@ -44,7 +54,7 @@ const UserProfile = () => {
       <View style={styles.profileCard}>
         {/* Profile Icon */}
         <View style={styles.profileIconContainer}>
-          <Icon name="account" size={100} color={"#fff"} />
+          <Icon name="account" size={100} color={'#fff'} />
         </View>
 
         {/* User Information */}
@@ -63,6 +73,11 @@ const UserProfile = () => {
             <Text style={styles.userGems}>Gems: {userData.gems}</Text>
           </View>
         </View>
+      </View>
+      <View style={{width:'100%', marginTop:30}}>
+        <Pressable style={styles.loginButton} onPress={handleLogout}>
+          <Text style={styles.loginButtonText}>Log Out</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -141,6 +156,23 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#155724',
     marginLeft: 10,
+  },
+  loginButton: {
+    height: 50,
+    backgroundColor: '#4a90e2',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  loginButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
   },
 });
 

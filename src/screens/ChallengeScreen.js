@@ -6,7 +6,7 @@ import ProgressBar from 'react-native-progress/Bar'; // Progress bar for visual 
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons'; // For adding icons
 import { auth, db } from '../../firebaseConfig'; // Import Firebase config
 import { doc, getDoc, updateDoc } from 'firebase/firestore'; // For Firestore operations
-
+import { ref, update } from 'firebase/database';
 const ChallengeScreen = () => {
   const { level, setLevel, gems, setGems, challenges, setChallenges } = useProgressContext();
   const [watchId, setWatchId] = useState(null);
@@ -15,22 +15,6 @@ const ChallengeScreen = () => {
   const stepsPerMile = 2000; // Average steps per mile
   const metersPerMile = 1609.34; // Meters in a mile
 
-  // Fetch user data when the component is mounted
-  // useEffect(() => {
-  //   const fetchUserData = async () => {
-  //     const user = auth.currentUser;
-  //     if (user) {
-  //       const userDoc = await getDoc(doc(db, 'users', user.uid));
-  //       if (userDoc.exists()) {
-  //         const userData = userDoc.data();
-  //         setGems(userData.gems || 0); // Initialize gems from Firestore
-  //         setChallenges(userData.challenges); // Initialize challenge data from Firestore
-  //         setLevel(userData.level || 1); // Initialize level from Firestore
-  //       }
-  //     }
-  //   };
-  //   fetchUserData().then();
-  // }, [setLevel]);
 
   // Request location permission and watch GPS position
   useEffect(() => {
@@ -92,7 +76,7 @@ const ChallengeScreen = () => {
       }
     };
 
-    requestLocationPermission();
+    requestLocationPermission().then();
 
     return () => {
       if (watchId) {
@@ -128,8 +112,14 @@ const ChallengeScreen = () => {
     try {
       const user = auth.currentUser;
       if (user) {
-        const userRef = doc(db, 'users', user.uid);
-        await updateDoc(userRef, {
+        // const userRef = doc(db, 'users', user.uid);
+        // await updateDoc(userRef, {
+        //   challenges: updatedChallenges, // Update challenge data
+        //   gems: updatedGems, // Update total gems
+        //   level: level === 5 ? level : level + 1, // Update current level
+        // });
+        const userRef = ref(db, `users/${user.uid}`); // Reference the user's data in Realtime Database
+        await update(userRef, {
           challenges: updatedChallenges, // Update challenge data
           gems: updatedGems, // Update total gems
           level: level === 5 ? level : level + 1, // Update current level

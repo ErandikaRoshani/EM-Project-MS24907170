@@ -4,7 +4,7 @@ import { auth, db } from '../../firebaseConfig'; // Import Firebase config
 import { collection, getDocs } from 'firebase/firestore'; // For Firestore operations
 import {useProgressContext} from '../components/ProgressContext'; // Assuming you have a context for user progress
 import Icon from 'react-native-vector-icons/FontAwesome'; // Import the icon library
-
+import { ref, get } from 'firebase/database';
 const LeaderboardScreen = () => {
   const { level, gems } = useProgressContext();
   const [leaderboardData, setLeaderboardData] = useState([]);
@@ -12,15 +12,31 @@ const LeaderboardScreen = () => {
   useEffect(() => {
     const fetchLeaderboardData = async () => {
       try {
-        const querySnapshot = await getDocs(collection(db, 'users'));
-        const usersData = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+        // const querySnapshot = await getDocs(collection(db, 'users'));
+        // const usersData = querySnapshot.docs.map(doc => ({
+        //   id: doc.id,
+        //   ...doc.data(),
+        // }));
+        //
+        // // Sort users by score (gems) in descending order
+        // const sortedData = usersData.sort((a, b) => b.gems - a.gems);
+        // setLeaderboardData(sortedData);
+        const usersRef = ref(db, 'users'); // Reference to 'users' node in Realtime Database
+        const snapshot = await get(usersRef); // Get all users' data
 
-        // Sort users by score (gems) in descending order
-        const sortedData = usersData.sort((a, b) => b.gems - a.gems);
-        setLeaderboardData(sortedData);
+        if (snapshot.exists()) {
+          const usersData = snapshot.val(); // Get all users' data as an object
+          const usersArray = Object.keys(usersData).map(key => ({
+            id: key,
+            ...usersData[key],
+          }));
+
+          // Sort users by score (gems) in descending order
+          const sortedData = usersArray.sort((a, b) => b.gems - a.gems);
+          setLeaderboardData(sortedData);
+        } else {
+          console.log('No data available');
+        }
       } catch (error) {
         console.error('Error fetching leaderboard data: ', error);
       }

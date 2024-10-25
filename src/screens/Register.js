@@ -3,7 +3,7 @@ import { View, Text, TextInput, Alert, StyleSheet, Pressable } from 'react-nativ
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebaseConfig';
-
+import { ref, set } from 'firebase/database';
 const RegisterScreen = ({ navigation }) => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -22,7 +22,14 @@ const RegisterScreen = ({ navigation }) => {
       const user = userCredential.user;
 
       // Store user details in Firestore
-      await setDoc(doc(db, 'users', user.uid), {
+      // await setDoc(doc(db, 'users', user.uid), {
+      //   userId: user.uid,
+      //   username: username,
+      //   email: email,
+      //   contactNo: contactNo,
+      //   gems: 0, // Initialize gem balance to 0
+      // });
+      await set(ref(db, `users/${user.uid}`), {
         userId: user.uid,
         username: username,
         email: email,
@@ -31,9 +38,9 @@ const RegisterScreen = ({ navigation }) => {
       });
 
       Alert.alert('Success', 'User registered successfully!');
-      navigation.navigate('Login')
+      navigation.navigate('Login');
     } catch (error) {
-      console.error("Registration error:", error);
+      console.error('Registration error:', error);
       Alert.alert('Error', error.message);
     }
   };
